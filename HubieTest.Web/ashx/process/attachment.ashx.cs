@@ -1,5 +1,10 @@
+using System;
+using System.IO;
 using System.Web;
+using System.Configuration;
 using HubieTest.Web.ashx;
+using HubieTest.Business;
+using HubieTest.Dal;
 using Newtonsoft.Json;
 
 namespace HubieTest.Web.process
@@ -42,19 +47,127 @@ namespace HubieTest.Web.process
                 HttpStatusReturn = 400;
                 return JsonConvert.SerializeObject(new { error = "Unsupported method: " + strMETHOD });
             }
+            // read file and ticketId
+            HttpPostedFile file = context.Request.Files.Count > 0 ? context.Request.Files[0] : null;
+            string ticketIdRaw = context.Request.Form["ticketId"] ?? context.Request.QueryString["ticketId"];
 
-            // example of reading the multipart payload (left here as guidance):
-            //   HttpPostedFile file = context.Request.Files.Count > 0 ? context.Request.Files[0] : null;
-            //   string ticketId = context.Request.Form["ticketId"];
+            // validate file
+            if (file == null)
+            {
+                HttpStatusReturn = 400;
+                return JsonConvert.SerializeObject(new { error = "No file uploaded." });
+            }
 
-            // TODO:
-            //  - validate file/ticketId (and size/extension for extra points)
-            //  - save it to disk
-            //  - register the metadata (name, type, size, path) via ticketBusiness
-            //  - return the ATTACHMENT as JSON
+            // validate ticketId
+            if (string.IsNullOrEmpty(ticketIdRaw) || !long.TryParse(ticketIdRaw, out long ticketId))
+            {
+                HttpStatusReturn = 400;
+                return JsonConvert.SerializeObject(new { error = "ticketId is required and must be a number." });
+            }
 
-            HttpStatusReturn = 501; // Not Implemented
-            return JsonConvert.SerializeObject(new { error = "Attachment upload not implemented yet." });
+            // basic size/extension checks
+            const int maxBytes = 10 * 1024 * 1024; // 10 MB (matches Web.config comment)
+            if (file.ContentLength <= 0 || file.ContentLength > maxBytes)
+            {
+                HttpStatusReturn = 413; // Payload Too Large
+                return JsonConvert.SerializeObject(new { error = "File is empty or exceeds the maximum allowed size (10 MB)." });
+            }
+
+            // only allow certain extensions (for security reasons)
+            var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".gif", ".pdf", ".txt", ".doc", ".docx", ".xls", ".xlsx" };
+            string originalName = Path.GetFileName(file.FileName ?? string.Empty);
+            string ext = Path.GetExtension(originalName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext) || Array.IndexOf(allowedExt, ext) < 0)
+            {
+                HttpStatusReturn = 415; // Unsupported Media Type
+                return JsonConvert.SerializeObject(new { error = "File type is not allowed." });
+            }
+
+            // authorize / verify ticket exists
+            var tb = new ticketBusiness();
+            tb.loggedUserId = UserId;
+            tb.loggedUserName = UserName;
+            tb.loggedUserProfile = UserProfile;
+
+            try
+            {
+                // check if ticket exists
+                var existing = tb.get(ticketId);
+                if (existing == null)
+                {
+                    HttpStatusReturn = 404;
+                    return JsonConvert.SerializeObject(new { error = "Ticket not found." });
+                }
+
+                // Optional: only requester or agents can upload
+                bool isRequester = existing.REQUESTER_ID == UserId;
+                bool isAgent = string.Equals(UserProfile, "AGENT", StringComparison.OrdinalIgnoreCase);
+                if (!isRequester && !isAgent)
+                {
+                    HttpStatusReturn = 403;
+                    return JsonConvert.SerializeObject(new { error = "Not authorized to attach files to this ticket." });
+                }
+            }
+            catch (Exception ex)
+            {
+                HttpStatusReturn = 500;
+                return JsonConvert.SerializeObject(new { error = "Error validating ticket: " + ex.Message });
+            }
+
+            // save to disk
+            string uploadRoot = ConfigurationManager.AppSettings["UPLOADS_PATH"] ?? "~/uploads";
+            string uploadsFolder = context.Server.MapPath(uploadRoot);
+            string ticketFolder = Path.Combine(uploadsFolder, ticketId.ToString());
+            try
+            {
+                Directory.CreateDirectory(ticketFolder);
+            }
+            catch (Exception ex)
+            {
+                HttpStatusReturn = 500;
+                return JsonConvert.SerializeObject(new { error = "Could not create upload directory: " + ex.Message });
+            }
+
+            // generate a unique filename to avoid collisions
+            string storedName = $"{Guid.NewGuid():N}_{originalName}";
+            string fullPath = Path.Combine(ticketFolder, storedName);
+
+            try
+            {
+                file.SaveAs(fullPath);
+            }
+            catch (Exception ex)
+            {
+                HttpStatusReturn = 500;
+                return JsonConvert.SerializeObject(new { error = "Error saving file: " + ex.Message });
+            }
+
+            // register metadata
+            var attachment = new ATTACHMENT
+            {
+                TICKET_ID = ticketId,
+                INTERACTION_ID = null,
+                ATTACHMENT_NAME = originalName,
+                ATTACHMENT_TYPE = file.ContentType,
+                ATTACHMENT_SIZE = file.ContentLength,
+                ATTACHMENT_PATH = Path.Combine(ticketId.ToString(), storedName).Replace("\\", "/"),
+                USER_ID = UserId,
+                ATTACHMENT_CREATED_DT = DateTime.Now
+            };
+
+            try
+            {
+                // register the attachment in the database
+                var created = tb.registerAttachment(attachment);
+                // return the created attachment as JSON
+                HttpStatusReturn = 201;
+                return JsonConvert.SerializeObject(created);
+            }
+            catch (Exception ex)
+            {
+                HttpStatusReturn = 500;
+                return JsonConvert.SerializeObject(new { error = "Error registering attachment: " + ex.Message });
+            }
         }
     }
 }
