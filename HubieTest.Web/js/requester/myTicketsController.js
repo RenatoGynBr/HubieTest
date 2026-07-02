@@ -8,10 +8,24 @@ angular.module('hubieTest').controller('myTicketsController',
 
         $scope.tickets = [];
         $scope.loading = false;
+        $scope.error = null;
 
         $scope.load = function () {
-            // TODO: apiService.request('ashx/process/ticket.ashx', 'listMine', null)
-            //       .then(function (r) { $scope.tickets = r.data; });
+            $scope.loading = true;
+            $scope.error = null;
+
+            apiService.request('ashx/process/ticket.ashx', 'listMine', null)
+                .then(function (r) {
+                    $scope.tickets = r.data || [];
+                })
+                .catch(function (err) {
+                    console.error('listMine error', err);
+                    $scope.error = 'Unable to load your tickets';
+                    $scope.tickets = [];
+                })
+                .finally(function () {
+                    $scope.loading = false;
+                });
         };
 
         $scope.openDetail = function (ticket) {
