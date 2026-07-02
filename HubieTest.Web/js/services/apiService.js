@@ -49,19 +49,55 @@ angular.module('hubieTest').factory('apiService',
             // Hint: they all follow the same request(...) pattern above.
             // Implement them as you need in the controllers:
             //
-            // openTicket: function (ticket) {
-            //     return request('ashx/process/ticket.ashx', 'open', JSON.stringify(ticket));
-            // },
-            // listMyTickets: function () { ... 'listMine' ... },
-            // listQueue: function (status) { ... 'listQueue' ... },
-            // getTicket: function (id) { ... 'get' ... },
-            // assign: function (id) { ... 'assign' ... },
-            // changeStatus: function (id, status) { ... 'changeStatus' ... },
-            // addInteraction: function (id, message) { ... 'addInteraction' ... },
-            // listInteractions: function (id) { ... 'listInteractions' ... },
-            // listAttachments: function (id) { ... 'listAttachments' ... },
-            //
+            openTicket: function (ticket) {
+                return request('ashx/process/ticket.ashx', 'open', JSON.stringify(ticket));
+            },
+            listMyTickets: function () {
+                return request('ashx/process/ticket.ashx', 'listMine', null);
+            },
+            listQueue: function (status) {
+                var payload = status ? JSON.stringify({ status: status }) : null;
+                return request('ashx/process/ticket.ashx', 'listQueue', payload);
+            },
+            getTicket: function (id) {
+                return request('ashx/process/ticket.ashx', 'get', JSON.stringify({ ticketId: id }));
+            },
+            assign: function (id) {
+                return request('ashx/process/ticket.ashx', 'assign', JSON.stringify({ ticketId: id }));
+            },
+            changeStatus: function (id, status) {
+                return request('ashx/process/ticket.ashx', 'changeStatus', JSON.stringify({ ticketId: id, status: status }));
+            },
+            addInteraction: function (id, message) {
+                return request('ashx/process/ticket.ashx', 'addInteraction', JSON.stringify({ ticketId: id, message: message }));
+            },
+            listInteractions: function (id) {
+                return request('ashx/process/ticket.ashx', 'listInteractions', JSON.stringify({ ticketId: id }));
+            },
+            listAttachments: function (id) {
+                return request('ashx/process/ticket.ashx', 'listAttachments', JSON.stringify({ ticketId: id }));
+            },            //
             // Attachment upload is multipart (FormData) — see open-ticket.html / handle.html.
+            uploadAttachment: function (ticketId, file) {
+                var fd = new FormData();
+                fd.append('method', 'upload');
+                fd.append('ticketId', ticketId);
+                fd.append('file', file);
+
+                var auth = $sessionStorage.X_User_Token ? 'Bearer ' + $sessionStorage.X_User_Token : null;
+                var headersObj = {};
+                if (auth) headersObj['Authorization'] = auth;
+                // Content-Type must be undefined so the browser sets the multipart boundary
+                headersObj['Content-Type'] = undefined;
+
+                return $http({
+                    method: 'POST',
+                    url: WEB_SERVER + 'ashx/process/attachment.ashx',
+                    data: fd,
+                    transformRequest: angular.identity,
+                    headers: headersObj
+                });
+            },
 
             // exposes the generic request so the candidate can use it freely
             request: request,
@@ -69,3 +105,4 @@ angular.module('hubieTest').factory('apiService',
         };
     }
 ]);
+
