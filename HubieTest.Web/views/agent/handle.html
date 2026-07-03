@@ -6,9 +6,32 @@
     <!-- TODO (candidate): ticket header ($scope.ticket) -->
     <div class="card" ng-if="ticket">
         <h3>{{ ticket.TICKET_TITLE }}</h3>
-        <p><strong>Category:</strong> {{ ticket.CATEGORY_NAME }} &middot;
-           <strong>Requester:</strong> {{ ticket.REQUESTER_NAME }} &middot;
-           <strong>Status:</strong> {{ ticket.TICKET_STATUS }}</p>
+        <p>
+            <strong>Category:</strong> {{ ticket.CATEGORY_NAME }} &middot;
+            <strong>Requester:</strong> {{ ticket.REQUESTER_NAME }} &middot;
+            <strong>Agent:</strong> {{ ticket.AGENT_NAME || 'Unassigned' }} &middot;
+            <strong>Status:</strong> <span class="badge">{{ ticket.TICKET_STATUS }}</span>
+        </p>
+        <p>{{ ticket.TICKET_DESCRIPTION }}</p>
+        <p class="muted">
+            Opened: {{ ticket.TICKET_CREATED_DT | date:'short' }}
+            <span ng-if="ticket.TICKET_UPDATED_DT"> &middot; Updated: {{ ticket.TICKET_UPDATED_DT | date:'short' }}</span>
+            <span ng-if="ticket.TICKET_CLOSED_DT"> &middot; Closed: {{ ticket.TICKET_CLOSED_DT | date:'short' }}</span>
+        </p>
+
+        <div class="actions">
+            <button class="btn" ng-click="assign()" ng-disabled="actionLoading">Assign to me</button>
+            <button class="btn" ng-click="changeStatus('ANSWERED')" ng-disabled="statusLoading">Mark as answered</button>
+            <button class="btn" ng-click="changeStatus('CLOSED')" ng-disabled="statusLoading">Close</button>
+        </div>
+    </div>
+    <!--<div class="card" ng-if="ticket">
+        <h3>{{ ticket.TICKET_TITLE }}</h3>
+        <p>
+            <strong>Category:</strong> {{ ticket.CATEGORY_NAME }} &middot;
+            <strong>Requester:</strong> {{ ticket.REQUESTER_NAME }} &middot;
+            <strong>Status:</strong> {{ ticket.TICKET_STATUS }}
+        </p>
         <p>{{ ticket.TICKET_DESCRIPTION }}</p>
 
         <div class="actions">
@@ -16,10 +39,48 @@
             <button class="btn" ng-click="changeStatus('ANSWERED')">Mark as answered</button>
             <button class="btn" ng-click="changeStatus('CLOSED')">Close</button>
         </div>
-    </div>
-
+    </div>-->
     <!-- Thread (TODO) -->
     <div class="card">
+        <h4>Conversation</h4>
+        <div class="thread">
+            <div class="msg" ng-repeat="i in interactions" ng-class="{'msg-agent': i.USER_PROFILE === 'AGENT'}">
+                <div class="msg-author">{{ i.USER_NAME }} <em>({{ i.USER_PROFILE }})</em></div>
+                <div class="msg-text" ng-bind="i.INTERACTION_MESSAGE"></div>
+                <div class="msg-meta muted">
+                    {{ i.INTERACTION_CREATED_DT | date:'short' }}
+                </div>
+            </div>
+            <p class="muted" ng-if="!interactions.length">No messages yet.</p>
+        </div>
+
+        <textarea ng-model="newMessage" rows="3" placeholder="Reply to the requester..." ng-disabled="replyLoading"></textarea>
+        <div>
+            <button class="btn btn-primary" ng-click="reply()" ng-disabled="replyLoading || !newMessage.trim()">Send reply</button>
+            <span class="muted" ng-if="replyLoading">Sending...</span>
+            <div class="text-danger" ng-if="replyError">{{ replyError }}</div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h4>Attachments</h4>
+        <ul>
+            <li ng-repeat="a in attachments">
+                <!-- assumes ATTACHMENT_PATH is a relative path under /uploads/ -->
+                <a target="_blank" ng-href="/uploads/{{ a.ATTACHMENT_PATH }}">{{ a.ATTACHMENT_NAME }}</a>
+                <small class="muted">({{ a.ATTACHMENT_TYPE }}, {{ a.ATTACHMENT_SIZE }} bytes)</small>
+            </li>
+            <li class="muted" ng-if="!attachments.length">No attachments.</li>
+        </ul>
+        <!-- optional: upload a file (controller must implement upload flow) -->
+        <div>
+            <input type="file" id="attachFile" file-model="attachFile" /> <!-- requires file-model directive or use ng-change handler -->
+            <button class="btn" ng-click="uploadAttachment()" ng-disabled="attachLoading || !attachFile">Upload</button>
+            <span class="muted" ng-if="attachLoading">Uploading...</span>
+            <div class="text-danger" ng-if="attachError">{{ attachError }}</div>
+        </div>
+    </div>
+    <!--<div class="card">
         <h4>Conversation</h4>
         <div class="thread">
             <div class="msg" ng-repeat="i in interactions" ng-class="{'msg-agent': i.USER_PROFILE === 'AGENT'}">
@@ -32,14 +93,13 @@
 
         <textarea ng-model="newMessage" rows="3" placeholder="Reply to the requester..."></textarea>
         <button class="btn btn-primary" ng-click="reply()">Send reply</button>
-    </div>
-
+    </div>-->
     <!-- Attachments (TODO) -->
-    <div class="card">
+    <!--<div class="card">
         <h4>Attachments</h4>
         <ul>
             <li ng-repeat="a in attachments">{{ a.ATTACHMENT_NAME }}</li>
             <li class="muted" ng-if="!attachments.length">No attachments. (TODO)</li>
         </ul>
-    </div>
+    </div>-->
 </div>
