@@ -6,22 +6,23 @@
     </div>
 
     <div class="card">
-        <!-- TODO (candidate): list the tickets in $scope.tickets -->
-        <table class="grid">
+        <!-- List the tickets in $scope.tickets. Controller should initialize: $scope.tickets = [] and $scope.loading = true/false -->
+        <div ng-if="loading" class="muted">Loading…</div>
+        <table class="grid" ng-if="!loading">
             <thead>
                 <tr><th>#</th><th>Title</th><th>Category</th><th>Status</th><th>Created</th><th></th></tr>
             </thead>
             <tbody>
-                <tr ng-repeat="t in tickets">
+                <tr ng-repeat="t in tickets track by t.TICKET_ID">
                     <td>{{ t.TICKET_ID }}</td>
                     <td>{{ t.TICKET_TITLE }}</td>
                     <td>{{ t.CATEGORY_NAME }}</td>
                     <td><span class="status">{{ t.TICKET_STATUS }}</span></td>
-                    <td>{{ t.TICKET_CREATED_DT }}</td>
-                    <td><button class="btn btn-link" ng-click="openDetail(t)">open</button></td>
+                    <td>{{ t.TICKET_CREATED_DT | date:'short' }}</td>
+                    <td><button type="button" class="btn btn-link" ng-click="openDetail(t)" aria-label="Open ticket {{t.TICKET_ID}}">open</button></td>
                 </tr>
-                <tr ng-if="!tickets.length">
-                    <td colspan="6" class="muted">No tickets yet. (TODO: implement the listing)</td>
+                <tr ng-if="!tickets || !tickets.length">
+                    <td colspan="6" class="muted">No tickets yet. Click <strong>Open ticket</strong> to create one.</td>
                 </tr>
             </tbody>
         </table>

@@ -11,22 +11,29 @@
     </div>
 
     <div class="card">
-        <!-- TODO (candidate): list the queue in $scope.tickets -->
-        <table class="grid">
+        <!-- Controller should initialize: $scope.tickets = []; $scope.loading = true/false -->
+        <div ng-if="loading" class="muted">Loading…</div>
+
+        <table class="grid" ng-if="!loading">
             <thead>
                 <tr><th>#</th><th>Title</th><th>Category</th><th>Requester</th><th>Status</th><th></th></tr>
             </thead>
             <tbody>
-                <tr ng-repeat="t in tickets">
+                <tr ng-repeat="t in tickets track by t.TICKET_ID">
                     <td>{{ t.TICKET_ID }}</td>
                     <td>{{ t.TICKET_TITLE }}</td>
                     <td>{{ t.CATEGORY_NAME }}</td>
                     <td>{{ t.REQUESTER_NAME }}</td>
                     <td><span class="status">{{ t.TICKET_STATUS }}</span></td>
-                    <td><button class="btn btn-link" ng-click="handle(t)">handle</button></td>
+                    <td><button type="button" class="btn btn-link" ng-click="handle(t)" aria-label="Handle ticket {{t.TICKET_ID}}">handle</button></td>
                 </tr>
-                <tr ng-if="!tickets.length">
-                    <td colspan="6" class="muted">Empty queue. (TODO: implement the listing)</td>
+
+                <tr ng-if="!tickets || !tickets.length">
+                    <td colspan="6" class="muted">
+                        No tickets in the queue.
+                        <span ng-if="statusFilter"> (No tickets match the selected filter.)</span>
+                        <span ng-if="!statusFilter"> Click refresh or change filter to see tickets.</span>
+                    </td>
                 </tr>
             </tbody>
         </table>

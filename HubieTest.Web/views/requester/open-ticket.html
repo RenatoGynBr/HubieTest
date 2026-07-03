@@ -3,33 +3,45 @@
     <h2>Open ticket</h2>
 
     <div class="card">
-        <form ng-submit="save()" novalidate>
-            <label>Title</label>
-            <input type="text" ng-model="ticket.TICKET_TITLE" maxlength="200" />
+        <form name="ticketForm" ng-submit="save()" novalidate>
+            <label for="title">Title <span aria-hidden="true">*</span></label>
+            <input id="title" name="title" type="text" ng-model="ticket.TICKET_TITLE" maxlength="200"
+                   required ng-disabled="saving" />
 
-            <label>Category</label>
-            <!-- REFERENCE: dropdown populated by categories.ashx -->
-            <select ng-model="ticket.CATEGORY_ID"
-                    ng-options="c.CATEGORY_ID as c.CATEGORY_NAME for c in categories">
+            <div class="error" ng-if="ticketForm.title.$touched && ticketForm.title.$error.required">Title is required.</div>
+            <div class="error" ng-if="ticketForm.title.$error.maxlength">Title is too long.</div>
+
+            <label for="category">Category <span aria-hidden="true">*</span></label>
+            <select id="category" name="category" ng-model="ticket.CATEGORY_ID"
+                    ng-options="c.CATEGORY_ID as c.CATEGORY_NAME for c in categories"
+                    required ng-disabled="loadingCategories || saving">
                 <option value="">Select...</option>
             </select>
+            <div class="error" ng-if="ticketForm.category.$touched && ticketForm.category.$error.required">Category is required.</div>
+            <div class="muted" ng-if="loadingCategories">Loading categories…</div>
 
-            <label>Description</label>
-            <textarea ng-model="ticket.TICKET_DESCRIPTION" rows="5"></textarea>
+            <label for="desc">Description <span aria-hidden="true">*</span></label>
+            <textarea id="desc" name="desc" ng-model="ticket.TICKET_DESCRIPTION" rows="5"
+                      required ng-disabled="saving"></textarea>
+            <div class="error" ng-if="ticketForm.desc.$touched && ticketForm.desc.$error.required">Description is required.</div>
 
-            <label>Attachment (optional)</label>
-            <!-- TODO (candidate): capture the file (e.g. a file-input directive ->
-                 $scope.file) and send it as multipart to attachment.ashx -->
-            <input type="file" id="attachment" />
+            <label for="attachment">Attachment (optional)</label>
+            <!-- setFile(files) is called to store selected file on $scope -->
+            <input id="attachment" type="file" accept="image/*,application/pdf"
+                   onchange="angular.element(this).scope().setFile(this.files)" aria-label="Attachment" />
 
             <div class="error" ng-if="error">{{ error }}</div>
 
             <div class="actions">
-                <button type="submit" class="btn btn-primary" ng-disabled="saving">Open ticket</button>
+                <button type="submit" class="btn btn-primary"
+                        ng-disabled="saving || ticketForm.$invalid">
+                    <span ng-if="!saving">Open ticket</span>
+                    <span ng-if="saving">Opening…</span>
+                </button>
                 <a class="btn" ui-sref="app.myTickets">Cancel</a>
             </div>
         </form>
     </div>
 
-    <p class="muted">Categories loaded: {{ categories.length }} (example of an end-to-end slice already working).</p>
+    <p class="muted">Categories loaded: {{ categories.length }}.</p>
 </div>

@@ -3,36 +3,61 @@
     <a class="btn btn-link" ui-sref="app.myTickets">&larr; back</a>
     <h2>Ticket #{{ ticketId }}</h2>
 
-    <!-- TODO (candidate): build the ticket header ($scope.ticket) -->
-    <div class="card" ng-if="ticket">
+    <div ng-if="loadingTicket" class="muted">Loading ticket…</div>
+
+    <div class="card" ng-if="!loadingTicket && ticket">
         <h3>{{ ticket.TICKET_TITLE }}</h3>
-        <p><strong>Category:</strong> {{ ticket.CATEGORY_NAME }} &middot;
-           <strong>Status:</strong> {{ ticket.TICKET_STATUS }}</p>
+        <p>
+            <strong>Category:</strong> {{ ticket.CATEGORY_NAME }} &middot;
+            <strong>Status:</strong> {{ ticket.TICKET_STATUS }}
+        </p>
         <p>{{ ticket.TICKET_DESCRIPTION }}</p>
+        <p class="muted">
+            Created: {{ ticket.TICKET_CREATED_DT | date:'short' }} &middot;
+            Requester: {{ ticket.REQUESTER_NAME }}
+        </p>
     </div>
 
-    <!-- Interaction thread (TODO: populate $scope.interactions) -->
     <div class="card">
         <h4>Conversation</h4>
-        <div class="thread">
-            <div class="msg" ng-repeat="i in interactions" ng-class="{'msg-agent': i.USER_PROFILE === 'AGENT'}">
+
+        <div ng-if="loadingThread" class="muted">Loading conversation…</div>
+
+        <div class="thread" ng-if="!loadingThread">
+            <div class="msg"
+                 ng-repeat="i in interactions track by i.INTERACTION_ID"
+                 ng-class="{'msg-agent': i.USER_PROFILE === 'AGENT'}">
                 <div class="msg-author">{{ i.USER_NAME }} <em>({{ i.USER_PROFILE }})</em></div>
                 <div class="msg-text">{{ i.INTERACTION_MESSAGE }}</div>
-                <div class="msg-date">{{ i.INTERACTION_CREATED_DT }}</div>
+                <div class="msg-date">{{ i.INTERACTION_CREATED_DT | date:'short' }}</div>
             </div>
-            <p class="muted" ng-if="!interactions.length">No messages yet. (TODO)</p>
+
+            <p class="muted" ng-if="!interactions || !interactions.length">No messages yet.</p>
         </div>
 
-        <textarea ng-model="newMessage" rows="3" placeholder="Write a reply..."></textarea>
-        <button class="btn btn-primary" ng-click="reply()">Send</button>
+        <form name="replyForm" ng-submit="reply()" novalidate>
+            <textarea name="message" ng-model="newMessage" rows="3" placeholder="Write a reply..."
+                      required ng-disabled="sending"></textarea>
+            <div class="error" ng-if="replyForm.message.$touched && replyForm.message.$error.required">Message is required.</div>
+
+            <div class="actions">
+                <button type="submit" class="btn btn-primary" ng-disabled="sending || replyForm.$invalid">
+                    <span ng-if="!sending">Send</span>
+                    <span ng-if="sending">Sending…</span>
+                </button>
+                <button type="button" class="btn" ng-click="refresh()" ng-disabled="sending">Refresh</button>
+            </div>
+        </form>
     </div>
 
-    <!-- Attachments (TODO: populate $scope.attachments) -->
     <div class="card">
         <h4>Attachments</h4>
         <ul>
-            <li ng-repeat="a in attachments">{{ a.ATTACHMENT_NAME }} ({{ a.ATTACHMENT_SIZE }} bytes)</li>
-            <li class="muted" ng-if="!attachments.length">No attachments. (TODO)</li>
+            <li ng-repeat="a in attachments track by a.ATTACHMENT_ID">
+                <a ng-href="{{ a.DOWNLOAD_URL }}" target="_blank" rel="noopener noreferrer">{{ a.ATTACHMENT_NAME }}</a>
+                <span class="muted"> — {{ a.ATTACHMENT_SIZE | number }} bytes</span>
+            </li>
+            <li class="muted" ng-if="!attachments || !attachments.length">No attachments.</li>
         </ul>
     </div>
 </div>
